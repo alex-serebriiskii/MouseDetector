@@ -13,7 +13,7 @@
 - **Audio capture is fixed** (comparability): device `hw:CARD=Microphone,DEV=0`, format `S16_LE`, `48000` Hz, `1` channel (mono). Never vary these across nights.
 - **Mic gain is frozen** at setup via `amixer` (AGC disabled) and never changed — it is the comparability lever.
 - **Cross-night comparability is the governing requirement:** every night uses identical capture settings and the same fixed length; scores are compared directly.
-- **Deploy model:** code is authored/committed/pushed from the Windows dev box and copied to devices via `scp`. The Pi has **no git** and **no numpy/scipy** — recorder code is stdlib-only. numpy/scipy live only on the buildbox and the local dev venv.
+- **Deploy model:** code is authored/committed/pushed from the Windows dev box and copied to devices via `scp`. The Pi has **no git** and **no numpy/scipy** — recorder code is stdlib-only. numpy/scipy live only in the buildbox venv (`~/mouse-survey/venv`) and the local dev venv; run the analyzer/report as `~/mouse-survey/venv/bin/python -m mousedetector.<mod>`.
 - **Detached recording:** the overnight recording must survive an SSH disconnect (launched via `nohup`, pidfile written).
 - **Detection defaults (tunable):** band `2000–12000` Hz, threshold `k=5.0` (median + k·MAD), frame `30` ms, hop `15` ms, min event duration `20` ms, merge gap `50` ms, evidence top-N `20`, evidence pad `0.5` s.
 - **Score:** primary metric is **events per hour** (duration-normalized); secondary is **total active seconds**.
@@ -905,7 +905,7 @@ def main(argv=None):
         subprocess.check_call(["rsync", "-av", final, final + ".json",
                                f"{a.dest_host}:{a.dest_dir}/"])
         subprocess.check_call(["ssh", a.dest_host,
-                               f"cd ~/{a.code_dir} && python3 -m mousedetector.analyze ~/{a.dest_dir}/{fname}"])
+                               f"cd ~/{a.code_dir} && ~/mouse-survey/venv/bin/python -m mousedetector.analyze ~/{a.dest_dir}/{fname}"])
         print(f"[record-night] pushed + analyzed on {a.dest_host}", flush=True)
     return 0
 
@@ -1036,19 +1036,19 @@ No code change in this task; the frozen gain values are captured in the README i
 
 **Interfaces:**
 - Consumes: `analyze.py`/`report.py` package, `rsync`.
-- Produces: a buildbox that can run `python3 -m mousedetector.analyze` and `python3 -m mousedetector.report`, and a validated manual pipeline (record → transfer → analyze → rank → report).
+- Produces: a buildbox that can run `~/mouse-survey/venv/bin/python -m mousedetector.analyze` and `~/mouse-survey/venv/bin/python -m mousedetector.report`, and a validated manual pipeline (record → transfer → analyze → rank → report).
 
-- [ ] **Step 1: Ensure numpy/scipy on the buildbox (already installed 2026-07-05)**
+- [ ] **Step 1: Analyzer venv on the buildbox (already created 2026-07-05)**
 
-The buildbox is Ubuntu 24.04, externally-managed (PEP 668), and its `ensurepip` is missing (so a plain `venv` can't bootstrap pip). It has system `pip 24.0`, so numpy/scipy are installed to the **user site** — this keeps the analyzer's plain `python3 -m mousedetector.analyze` invocation working (system `python3` auto-adds `~/.local`), needs no sudo and no venv. This was run during planning:
+The buildbox is Ubuntu 24.04 / externally-managed (PEP 668). With `python3-venv` installed, the analyzer runs from a dedicated venv at `~/mouse-survey/venv` — isolated, no `--break-system-packages`, no system-package changes. Provisioned during planning:
 ```
-ssh 192.168.0.224 'pip3 install --user --break-system-packages numpy scipy'
+ssh 192.168.0.224 'python3 -m venv ~/mouse-survey/venv && ~/mouse-survey/venv/bin/pip install numpy scipy'
 ```
 Verify (should already pass):
 ```
-ssh 192.168.0.224 'python3 -c "import numpy,scipy; from scipy.signal import butter,sosfiltfilt; print(numpy.__version__, scipy.__version__, \"ok\")"'
+ssh 192.168.0.224 '~/mouse-survey/venv/bin/python -c "import numpy,scipy; from scipy.signal import butter,sosfiltfilt; print(numpy.__version__, scipy.__version__, \"ok\")"'
 ```
-Expected: prints e.g. `2.5.1 1.18.0 ok`. (Reprovisioning a fresh box later: rerun the same one-liner — no sudo required.)
+Expected: prints e.g. `2.5.1 1.18.0 ok`. Every analyzer/report command below uses `~/mouse-survey/venv/bin/python` — the system `python3` deliberately has no numpy. Reprovisioning a fresh box: `sudo apt install python3-venv`, then rerun the one-liner above.
 
 - [ ] **Step 2: Create the buildbox directory layout (already created 2026-07-05)**
 
@@ -1085,7 +1085,7 @@ Expected: `deployed analyzer to 192.168.0.224`.
 
 Run:
 ```
-ssh 192.168.0.224 'cd ~/mouse-survey/code && python3 - <<PY
+ssh 192.168.0.224 'cd ~/mouse-survey/code && ~/mouse-survey/venv/bin/python - <<PY
 import numpy as np, wave
 sr=48000; n=int(4*sr); t=np.arange(n)/sr
 sig=np.zeros(n,dtype=np.float32)
@@ -1097,7 +1097,7 @@ w=wave.open("/home/codeagent/mouse-survey/incoming/2026-07-05_smoke_2204.wav","w
 w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr); w.writeframes(ints.tobytes()); w.close()
 print("wrote synthetic wav")
 PY
-python3 -m mousedetector.analyze ~/mouse-survey/incoming/2026-07-05_smoke_2204.wav'
+~/mouse-survey/venv/bin/python -m mousedetector.analyze ~/mouse-survey/incoming/2026-07-05_smoke_2204.wav'
 ```
 Expected: prints a result JSON with `"label": "smoke"` and `"events": 2`.
 
@@ -1112,8 +1112,8 @@ WAV=$(ssh rpi3 'ls -t ~/recordings/*e2e-test*.wav | head -1'); BASE=$(basename "
 scp "rpi3:$WAV" "rpi3:$WAV.json" /tmp/
 scp "/tmp/$BASE" "/tmp/$BASE.json" 192.168.0.224:mouse-survey/incoming/
 # 3) analyze on the buildbox, then print the leaderboard
-ssh 192.168.0.224 "cd ~/mouse-survey/code && python3 -m mousedetector.analyze ~/mouse-survey/incoming/$BASE"
-ssh 192.168.0.224 'cd ~/mouse-survey/code && python3 -m mousedetector.report'
+ssh 192.168.0.224 "cd ~/mouse-survey/code && ~/mouse-survey/venv/bin/python -m mousedetector.analyze ~/mouse-survey/incoming/$BASE"
+ssh 192.168.0.224 'cd ~/mouse-survey/code && ~/mouse-survey/venv/bin/python -m mousedetector.report'
 ```
 Expected: analyze prints a result JSON for label `e2e-test`; report prints a leaderboard containing `e2e-test`.
 
@@ -1188,7 +1188,7 @@ Expected: no error.
 Run the worker directly with `--push` (foreground, so it completes synchronously — the launcher wraps this exact call in `nohup`; avoid a bare `sleep`, which the Bash tool blocks):
 ```
 ssh rpi3 'python3 ~/mousedetector/record_night_worker.py --label arch-a-test --seconds 12 --outdir ~/recordings --push --dest-host 192.168.0.224 --dest-dir mouse-survey/incoming --code-dir mouse-survey/code'
-ssh 192.168.0.224 'ls -t ~/mouse-survey/incoming/*arch-a-test*.wav | head -1; cd ~/mouse-survey/code && python3 -m mousedetector.report'
+ssh 192.168.0.224 'ls -t ~/mouse-survey/incoming/*arch-a-test*.wav | head -1; cd ~/mouse-survey/code && ~/mouse-survey/venv/bin/python -m mousedetector.report'
 ```
 Expected: the worker prints `pushed + analyzed on 192.168.0.224`; the recording appears in the buildbox `incoming/`; the leaderboard includes `arch-a-test` (the Pi transferred and triggered analysis with no operator step).
 
@@ -1232,7 +1232,7 @@ Raspberry Pi and scoring activity offline on the buildbox. See the design spec i
    ```
 3. In the morning, read the leaderboard:
    ```
-   ssh 192.168.0.224 'cd ~/mouse-survey/code && python3 -m mousedetector.report'
+   ssh 192.168.0.224 'cd ~/mouse-survey/code && ~/mouse-survey/venv/bin/python -m mousedetector.report'
    ```
 4. Spot-check detections by listening to the evidence clips on the buildbox:
    `~/mouse-survey/evidence/<recording-stem>/event_*.wav`.
@@ -1247,7 +1247,7 @@ Raspberry Pi and scoring activity offline on the buildbox. See the design spec i
 ## Detection tuning
 Defaults live in `mousedetector/analyze.py`: band 2000–12000 Hz, `k=5.0`. Override per run:
 ```
-python3 -m mousedetector.analyze <wav> --low 2500 --high 10000 --k 6
+~/mouse-survey/venv/bin/python -m mousedetector.analyze <wav> --low 2500 --high 10000 --k 6
 ```
 
 ## Redeploy after code changes (from the dev box)
@@ -1277,3 +1277,4 @@ git commit -m "docs: operator runbook for the mouse-in-wall survey" -m "Co-Autho
 - **Line endings:** the repo is on Windows; git may warn `LF will be replaced by CRLF`. This is benign. Shell/Python scripts deployed to Linux use `\n` in the repo; if a deployed `bin/record-night` fails with `bad interpreter`, run `ssh rpi3 'sed -i "s/\r$//" ~/bin/record-night'`.
 - **Tuning:** the detection defaults are first guesses. After the first real overnight recording, listen to the evidence pack and adjust the band (`--low/--high`) and `--k`; the defaults live in `analyze.py` and can be overridden per-run on the CLI.
 - **Do not** vary capture settings or mic gain between nights — it breaks cross-night comparability, the whole point of the survey.
+- **Buildbox interpreter:** always run the analyzer/report with `~/mouse-survey/venv/bin/python` (e.g. `~/mouse-survey/venv/bin/python -m mousedetector.report`). The system `python3` deliberately has no numpy/scipy, so it will `ModuleNotFoundError` — that is expected, not a bug.

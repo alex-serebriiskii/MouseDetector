@@ -42,7 +42,7 @@ These were probed directly on 2026-07-05 and are the ground truth the design is 
 
 ### buildbox (analysis home) — `192.168.0.224`
 - Always-on Linux (Ubuntu 24.04, externally-managed / PEP 668, `ensurepip` missing), **4 cores, 31 GB RAM, 122 GB free disk**, `rsync` present, Python 3.12, system `pip 24.0`.
-- numpy/scipy installed to the **user site** (`pip3 install --user --break-system-packages numpy scipy` → numpy 2.5.1 / scipy 1.18.0, on 2026-07-05); no venv, no sudo. System `python3` finds them, so `python3 -m mousedetector.analyze` runs directly.
+- Analyzer runs from a dedicated **venv** at `~/mouse-survey/venv` (`python3-venv` installed; `python3 -m venv` + `pip install numpy scipy` → numpy 2.5.1 / scipy 1.18.0, on 2026-07-05). Isolated, no `--break-system-packages`, no system-package changes. Invoke via `~/mouse-survey/venv/bin/python -m mousedetector.analyze`; system `python3` intentionally has no numpy.
 
 ### Network
 - Pi (`192.168.0.5`) and buildbox (`192.168.0.224`) are on the **same `/24` LAN**.
