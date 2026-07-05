@@ -1038,25 +1038,25 @@ No code change in this task; the frozen gain values are captured in the README i
 - Consumes: `analyze.py`/`report.py` package, `rsync`.
 - Produces: a buildbox that can run `python3 -m mousedetector.analyze` and `python3 -m mousedetector.report`, and a validated manual pipeline (record → transfer → analyze → rank → report).
 
-- [ ] **Step 1: Install numpy/scipy on the buildbox (one-time — requires your sudo)**
+- [ ] **Step 1: Ensure numpy/scipy on the buildbox (already installed 2026-07-05)**
 
-This step needs a password and cannot run non-interactively. Ask the user to run, on the buildbox (192.168.0.224):
+The buildbox is Ubuntu 24.04, externally-managed (PEP 668), and its `ensurepip` is missing (so a plain `venv` can't bootstrap pip). It has system `pip 24.0`, so numpy/scipy are installed to the **user site** — this keeps the analyzer's plain `python3 -m mousedetector.analyze` invocation working (system `python3` auto-adds `~/.local`), needs no sudo and no venv. This was run during planning:
 ```
-sudo apt update && sudo apt install -y python3-numpy python3-scipy
+ssh 192.168.0.224 'pip3 install --user --break-system-packages numpy scipy'
 ```
-Verify (agent, non-interactive):
+Verify (should already pass):
 ```
-ssh 192.168.0.224 'python3 -c "import numpy,scipy;print(\"numpy\",numpy.__version__,\"scipy\",scipy.__version__)"'
+ssh 192.168.0.224 'python3 -c "import numpy,scipy; from scipy.signal import butter,sosfiltfilt; print(numpy.__version__, scipy.__version__, \"ok\")"'
 ```
-Expected: prints numpy/scipy versions. (Fallback without sudo: `python3 -m venv --without-pip ~/mouse-survey/venv`, bootstrap pip via `curl -sS https://bootstrap.pypa.io/get-pip.py | ~/mouse-survey/venv/bin/python`, then `~/mouse-survey/venv/bin/pip install numpy scipy`, and use that interpreter in later steps.)
+Expected: prints e.g. `2.5.1 1.18.0 ok`. (Reprovisioning a fresh box later: rerun the same one-liner — no sudo required.)
 
-- [ ] **Step 2: Create the buildbox directory layout**
+- [ ] **Step 2: Create the buildbox directory layout (already created 2026-07-05)**
 
-Run:
+Idempotent; run again if needed:
 ```
 ssh 192.168.0.224 'mkdir -p ~/mouse-survey/{incoming,results,evidence,code}'
 ```
-Expected: no error.
+Expected: no error. (`incoming/`, `results/`, `evidence/`, `code/` already exist.)
 
 - [ ] **Step 3: Write the buildbox deploy script**
 

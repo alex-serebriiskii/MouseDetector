@@ -41,8 +41,8 @@ These were probed directly on 2026-07-05 and are the ground truth the design is 
   for v1 — raw WAV only).
 
 ### buildbox (analysis home) — `192.168.0.224`
-- Always-on Linux, **4 cores, 31 GB RAM, 122 GB free disk**, `rsync` present, Python 3.12.
-- ⚠️ **`pip3` and numpy/scipy are NOT installed** — one-time setup required (venv).
+- Always-on Linux (Ubuntu 24.04, externally-managed / PEP 668, `ensurepip` missing), **4 cores, 31 GB RAM, 122 GB free disk**, `rsync` present, Python 3.12, system `pip 24.0`.
+- numpy/scipy installed to the **user site** (`pip3 install --user --break-system-packages numpy scipy` → numpy 2.5.1 / scipy 1.18.0, on 2026-07-05); no venv, no sudo. System `python3` finds them, so `python3 -m mousedetector.analyze` runs directly.
 
 ### Network
 - Pi (`192.168.0.5`) and buildbox (`192.168.0.224`) are on the **same `/24` LAN**.
