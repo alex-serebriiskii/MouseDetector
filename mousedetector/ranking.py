@@ -5,13 +5,13 @@ from collections import defaultdict
 FIELDS = ["date", "label", "duration_s", "events", "events_per_hour", "active_s"]
 
 def append_result(csv_path, date, label, duration_s, events, events_per_hour, active_s):
-    new = not os.path.exists(csv_path)
     parent = os.path.dirname(csv_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
     with open(csv_path, "a", newline="") as f:
+        write_header = f.tell() == 0
         w = csv.DictWriter(f, fieldnames=FIELDS)
-        if new:
+        if write_header:
             w.writeheader()
         w.writerow({
             "date": date, "label": label, "duration_s": f"{duration_s:.1f}",

@@ -10,4 +10,5 @@ def test_append_and_aggregate(tmp_path):
     kitchen = agg[0]
     assert kitchen["n_nights"] == 2
     assert abs(kitchen["mean_events_per_hour"] - 15.0) < 1e-9
+    assert abs(kitchen["mean_active_s"] - 50.0) < 1e-9
     assert kitchen["rank"] == 1 and agg[1]["rank"] == 2
