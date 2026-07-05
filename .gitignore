@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+recordings/
+results/
+evidence/
+incoming/
+*.wav
+*.wav.json
+*.wav.partial
+ranking.csv
