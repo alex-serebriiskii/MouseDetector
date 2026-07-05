@@ -85,6 +85,16 @@ manually first — Pi records, then the operator/session pulls to buildbox and r
 on demand. This is how we get a real end-to-end result and tune the detector before wiring
 the auto-push. No Pi→buildbox trust needed for bring-up.
 
+### 4.1 Deployment / code-delivery model
+
+Code is authored, committed, and pushed **from the Windows dev box** (which holds the repo
+clone and full editing tools). It is deployed to the Pi and buildbox as plain files over
+**`scp`** — **neither device needs git or a repo clone**. Verified tooling: the Pi has
+`scp` + `rsync` but **no `git`** (and doesn't need it); the buildbox has `git` + `rsync`.
+`rsync` is unavailable on the Windows dev box, so dev-box→device deploys use `scp`, while
+the Pi→buildbox *audio* transfer uses `rsync` (present on both Linux hosts). The GitHub repo
+plus the dev box are the source of truth; the Pi stays a minimal recorder.
+
 ## 5. Component specifications
 
 Each component is independently testable with a clear interface.
