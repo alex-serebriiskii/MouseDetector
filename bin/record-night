@@ -7,7 +7,8 @@ OUTDIR="$HOME/recordings"; mkdir -p "$OUTDIR"
 LOG="$OUTDIR/record-night.log"
 nohup python3 "$HOME/mousedetector/record_night_worker.py" \
   --label "$LABEL" --seconds "$SECS" --outdir "$OUTDIR" \
-  --device "hw:CARD=Microphone,DEV=0" --sample-rate 48000 \
+  --device "hw:CARD=Microphone,DEV=0" --sample-rate 48000 --push \
+  --dest-host 192.168.0.224 --dest-dir mouse-survey/incoming --code-dir mouse-survey/code \
   >> "$LOG" 2>&1 &
 echo $! > "$OUTDIR/record-night.pid"
 echo "record-night started (pid $(cat "$OUTDIR/record-night.pid")) label=$LABEL hours=$HOURS -> $OUTDIR (log: $LOG)"
