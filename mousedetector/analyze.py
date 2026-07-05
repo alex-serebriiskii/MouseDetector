@@ -32,8 +32,8 @@ def analyze_file(wav_path, ranking_csv, results_dir, evidence_dir,
     score = score_events(events, duration_s)
 
     meta = _meta(wav_path)
-    if meta and meta.get("label"):
-        date, label = meta.get("date"), meta.get("label")
+    if meta and meta.get("label") and meta.get("date"):
+        date, label = meta["date"], meta["label"]
     else:
         date, label = parse_recording_name(wav_path)
 
