@@ -34,6 +34,10 @@ def main(argv=None):
     rc = subprocess.call(cmd)
     if rc != 0:
         print(f"[record-night] arecord failed rc={rc}", file=sys.stderr)
+        try:
+            os.remove(partial)
+        except OSError:
+            pass
         return rc
     with open(final + ".json", "w") as f:
         json.dump(recorder.sidecar_for(a.label, start, a.seconds, a.device,
