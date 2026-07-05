@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+LABEL="${1:?usage: record-night <spot-label> [hours=8]}"
+HOURS="${2:-8}"
+SECS="$(python3 -c 'import sys; print(int(float(sys.argv[1]) * 3600))' "$HOURS")"
+OUTDIR="$HOME/recordings"; mkdir -p "$OUTDIR"
+LOG="$OUTDIR/record-night.log"
+nohup python3 "$HOME/mousedetector/record_night_worker.py" \
+  --label "$LABEL" --seconds "$SECS" --outdir "$OUTDIR" \
+  --device "hw:CARD=Microphone,DEV=0" --sample-rate 48000 \
+  >> "$LOG" 2>&1 &
+echo $! > "$OUTDIR/record-night.pid"
+echo "record-night started (pid $(cat "$OUTDIR/record-night.pid")) label=$LABEL hours=$HOURS -> $OUTDIR (log: $LOG)"
