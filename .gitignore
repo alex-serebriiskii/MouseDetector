@@ -5,6 +5,7 @@ recordings/
 results/
 evidence/
 incoming/
+.superpowers/
 *.wav
 *.wav.json
 *.wav.partial
